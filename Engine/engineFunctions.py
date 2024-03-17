@@ -133,15 +133,34 @@ def system_prompt(prompt):
 # LLM
 def llm_gemini(query_input, system_prompt=None, query = None, index=None):
     if index:
-        llm = Gemini(api_key= os.getenv("GOOGLE_GEMINI_API_KEY"))
-        embedding_instance = GeminiEmbedding(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
-        service_context = ServiceContext.from_defaults(llm=llm, embed_model=embedding_instance, system_prompt=system_prompt)
-        query_engine = index.as_query_engine(service_context=service_context)
+        embedding_model_instance = GeminiEmbedding(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
+        llm = Gemini(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
+        service_context = ServiceContext.from_defaults(llm = llm, embed_model=embedding_model_instance, system_prompt=system_prompt)
+        
+                # configure retriever
+        retriever = VectorIndexRetriever(
+            index=index,
+            similarity_top_k=10,
+        )
+
+        # configure response synthesizer
+        response_synthesizer = get_response_synthesizer(service_context=service_context)
+
+        # assemble query engine
+        query_engine = RetrieverQueryEngine(
+            retriever=retriever,
+            response_synthesizer=response_synthesizer,
+           
+        )
+
+        # query
         if query:
             response = query_engine.query(query_input+query)
         else:
             response = query_engine.query(query_input)
-        return response
+
+        print(response)
+
     
     else:
         genai.configure(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
@@ -195,6 +214,12 @@ def scrapper_youtube(link):
     shutil.rmtree("temp", ignore_errors=True)
 
     return index
+
+
+
+
+
+
 
 
 
